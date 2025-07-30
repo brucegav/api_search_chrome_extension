@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Alpha Vantage",
+    "description": "Free stock market data and financial indicators",
+    "url": "https://www.alphavantage.co/documentation/",
+    "category": "Finance",
+    "requires_key": true
+  },
+  {
+    "name": "OpenWeatherMap API",
+    "description": "Current weather data, forecasts, and historical weather",
+    "url": "https://openweathermap.org/api",
+    "category": "Weather",
+    "requires_key": true
+  },
+  {
+    "name": "REST Countries",
+    "description": "Get country data including population, area, currencies",
+    "url": "https://restcountries.com/",
+    "category": "Demographics",
+    "requires_key": false
+  }
+]

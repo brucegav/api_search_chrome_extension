@@ -1,28 +1,43 @@
+import requests
 import json
-import csv
 
 
-def load_apis_from_csv():
-    api_sources = []
+def download_public_apis():
+    """Download and process the public APIs JSON"""
+    json_url = "https://raw.githubusercontent.com/marcelscruz/public-apis/main/db/resources.json"
+
     try:
-        with open('api_list.csv', 'r') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                api = {
-                    "name": row['name'],
-                    "description": row['description'],
-                    "url": row['url'],
-                    "category": row['category'],
-                    "requires_key": row['requires_key'].lower() == 'true'
-                }
-                # Auto-generate searchable tags
-                api['search_tags'] = generate_search_tags(api)
-                api_sources.append(api)
-    except FileNotFoundError:
-        print("api_list.csv not found! Please create it first.")
-        return []
+        print("Downloading APIs from GitHub...")
+        response = requests.get(json_url)
+        response.raise_for_status()
 
-    return api_sources
+        data = response.json()
+
+        # The APIs are in data['entries'], not data directly
+        api_entries = data.get('entries', [])
+        print(f"Downloaded {len(api_entries)} APIs")
+
+        # Convert to our format
+        converted_apis = []
+        for api in api_entries:
+            converted_apis.append({
+                'name': api.get('API', 'Unknown'),
+                'description': api.get('Description', ''),
+                'url': api.get('Link', ''),
+                'category': api.get('Category', 'Other'),
+                'requires_key': api.get('Auth', '').lower() not in ['', 'no', 'none']
+            })
+
+        # Save directly as api_sources.json
+        with open('api_sources.json', 'w', encoding='utf-8') as f:
+            json.dump(converted_apis, f, indent=2, ensure_ascii=False)
+
+        print(f"Successfully converted {len(converted_apis)} APIs to api_sources.json")
+        return converted_apis
+
+    except Exception as e:
+        print(f"Error downloading APIs: {e}")
+        return []
 
 
 def generate_search_tags(api):
@@ -50,15 +65,15 @@ def generate_search_tags(api):
 
 
 def generate_extension_files():
-    api_sources = load_apis_from_csv()
-    if not api_sources:
+    # This will use the api_sources.json file that download_public_apis() creates
+    try:
+        with open('api_sources.json', 'r', encoding='utf-8') as f:
+            api_sources = json.load(f)
+    except FileNotFoundError:
+        print("api_sources.json not found! Run download_public_apis() first.")
         return
 
-    # Create the JSON file for our Chrome extension
-    with open('api_sources.json', 'w') as f:
-        json.dump(api_sources, f, indent=2)
-
-    print(f"Generated api_sources.json with {len(api_sources)} APIs successfully!")
+    print(f"Loaded {len(api_sources)} APIs for extension")
 
 def create_popup_html():
     html_content = """<!DOCTYPE html>
@@ -187,6 +202,7 @@ def create_manifest():
 
 
 if __name__ == "__main__":
+    download_public_apis()
     generate_extension_files()
     create_popup_html()
     create_popup_js()

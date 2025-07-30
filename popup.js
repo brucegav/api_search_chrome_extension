@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Load API data and display it
   fetch('api_sources.json')
     .then(response => response.json())
     .then(data => {
@@ -24,16 +23,52 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  function calculateRelevanceScore(api, searchTerm) {
+    const term = searchTerm.toLowerCase();
+    let score = 0;
+
+    // Category match (highest weight - 3x)
+    if (api.category.toLowerCase().includes(term)) {
+      score += 3;
+    }
+
+    // Search tags match (medium weight - 2x)
+    if (api.search_tags && api.search_tags.toLowerCase().includes(term)) {
+      score += 2;
+    }
+
+    // Description match (lower weight - 1x)
+    if (api.description.toLowerCase().includes(term)) {
+      score += 1;
+    }
+
+    // Name match (medium weight - 2x)
+    if (api.name.toLowerCase().includes(term)) {
+      score += 2;
+    }
+
+    return score;
+  }
+
   function setupSearch(apis) {
     const searchInput = document.getElementById('search');
     searchInput.addEventListener('input', () => {
-      const searchTerm = searchInput.value.toLowerCase();
-      const filtered = apis.filter(api => 
-        api.name.toLowerCase().includes(searchTerm) ||
-        api.description.toLowerCase().includes(searchTerm) ||
-        api.category.toLowerCase().includes(searchTerm)
-      );
-      displayAPIs(filtered);
+      const searchTerm = searchInput.value.toLowerCase().trim();
+
+      if (searchTerm === '') {
+        displayAPIs(apis);
+        return;
+      }
+
+      // Calculate relevance scores and filter
+      const scoredApis = apis.map(api => ({
+        ...api,
+        relevanceScore: calculateRelevanceScore(api, searchTerm)
+      }))
+      .filter(api => api.relevanceScore > 0)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+      displayAPIs(scoredApis);
     });
   }
 });

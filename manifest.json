@@ -2,10 +2,15 @@
   "manifest_version": 3,
   "name": "API Data Source Finder",
   "version": "1.0",
-  "description": "Find APIs and data sources for data analysis",
+  "description": "Find APIs and data sources for data analysis and development",
   "action": {
     "default_popup": "popup.html",
     "default_title": "API Finder"
   },
-  "permissions": []
+  "permissions": [],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
 }

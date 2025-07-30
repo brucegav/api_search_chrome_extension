@@ -1,74 +1,87 @@
 document.addEventListener('DOMContentLoaded', function() {
+  let allApis = [];
+
   fetch('api_sources.json')
     .then(response => response.json())
     .then(data => {
-      displayAPIs(data);
-      setupSearch(data);
+      allApis = data;
+      displayAPIs(data.slice(0, 50)); // Show first 50 initially for performance
+    })
+    .catch(error => {
+      console.error('Error loading APIs:', error);
+      document.getElementById('api-list').innerHTML = '<div class="no-results">Error loading APIs</div>';
     });
 
   function displayAPIs(apis) {
     const apiList = document.getElementById('api-list');
-    apiList.innerHTML = '';
 
-    apis.forEach(api => {
-      const div = document.createElement('div');
-      div.className = 'api-item';
-      div.innerHTML = `
-        <div class="api-name">${api.name}</div>
-        <div>${api.description}</div>
-        <div class="api-category">${api.category} - ${api.requires_key ? 'API Key Required' : 'No Key Needed'}</div>
-        <a href="${api.url}" target="_blank">View Documentation</a>
-      `;
-      apiList.appendChild(div);
-    });
+    if (apis.length === 0) {
+      apiList.innerHTML = '<div class="no-results">No APIs found matching your search</div>';
+      return;
+    }
+
+    apiList.innerHTML = apis.map(api => `
+      <div class="api-item">
+        <div class="api-name">${escapeHtml(api.name)}</div>
+        <div class="api-description">${escapeHtml(api.description)}</div>
+        <div class="api-category">${escapeHtml(api.category)} • ${api.requires_key ? 'API Key Required' : 'No Key Needed'}</div>
+        <a href="${escapeHtml(api.url)}" target="_blank" class="api-link">View Documentation →</a>
+      </div>
+    `).join('');
   }
 
   function calculateRelevanceScore(api, searchTerm) {
     const term = searchTerm.toLowerCase();
     let score = 0;
 
-    // Category match (highest weight - 3x)
-    if (api.category.toLowerCase().includes(term)) {
-      score += 3;
-    }
+    // Exact name match (highest priority)
+    if (api.name.toLowerCase() === term) score += 10;
+    else if (api.name.toLowerCase().includes(term)) score += 5;
 
-    // Search tags match (medium weight - 2x)
-    if (api.search_tags && api.search_tags.toLowerCase().includes(term)) {
-      score += 2;
-    }
+    // Category match
+    if (api.category.toLowerCase().includes(term)) score += 4;
 
-    // Description match (lower weight - 1x)
-    if (api.description.toLowerCase().includes(term)) {
-      score += 1;
-    }
+    // Search tags match
+    if (api.search_tags && api.search_tags.toLowerCase().includes(term)) score += 3;
 
-    // Name match (medium weight - 2x)
-    if (api.name.toLowerCase().includes(term)) {
-      score += 2;
-    }
+    // Description match
+    if (api.description.toLowerCase().includes(term)) score += 2;
 
     return score;
   }
 
-  function setupSearch(apis) {
+  function setupSearch() {
     const searchInput = document.getElementById('search');
+    let searchTimeout;
+
     searchInput.addEventListener('input', () => {
-      const searchTerm = searchInput.value.toLowerCase().trim();
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const searchTerm = searchInput.value.toLowerCase().trim();
 
-      if (searchTerm === '') {
-        displayAPIs(apis);
-        return;
-      }
+        if (searchTerm === '') {
+          displayAPIs(allApis.slice(0, 50));
+          return;
+        }
 
-      // Calculate relevance scores and filter
-      const scoredApis = apis.map(api => ({
-        ...api,
-        relevanceScore: calculateRelevanceScore(api, searchTerm)
-      }))
-      .filter(api => api.relevanceScore > 0)
-      .sort((a, b) => b.relevanceScore - a.relevanceScore);
+        if (searchTerm.length < 2) return;
 
-      displayAPIs(scoredApis);
+        const scoredApis = allApis
+          .map(api => ({ ...api, relevanceScore: calculateRelevanceScore(api, searchTerm) }))
+          .filter(api => api.relevanceScore > 0)
+          .sort((a, b) => b.relevanceScore - a.relevanceScore)
+          .slice(0, 100); // Limit results for performance
+
+        displayAPIs(scoredApis);
+      }, 150);
     });
   }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  setupSearch();
 });
